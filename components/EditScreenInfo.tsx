@@ -1,77 +1,89 @@
-import React from 'react';
-import { StyleSheet } from 'react-native';
-
-import Colors from '../constants/Colors';
-import { ExternalLink } from './ExternalLink';
-import { MonoText } from './StyledText';
+import React, { useState } from 'react';
+import { Pressable } from 'react-native';
 import { Text, View } from './Themed';
+import { EditScreenInfoStyles } from "../components/styles/EditScreenInfo"
+import { AntDesign } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'react-native';
 
+const imgDir = FileSystem.documentDirectory + 'images/';
+
+const ensureDirExists = async () => {
+  const dirInfo = await FileSystem.getInfoAsync(imgDir);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(imgDir, { intermediates: true });
+  }
+};
 
 export default function EditScreenInfo({ path }: { path: string }) {
+  const [uri, setUri] = useState<{ uri: string; uriFormated: string }>({ uri: "", uriFormated: "" })
+
+  const { containerPickIcons, buttonPickerImage, containerPickPhoto } = EditScreenInfoStyles
+
+  const selectImage = async () => {
+    let result;
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.75
+    };
+
+
+    await ImagePicker.requestCameraPermissionsAsync();
+    result = await ImagePicker.launchCameraAsync(options);
+
+    if (!result.canceled) {
+      saveImage(result.assets[0].uri);
+    }
+  };
+
+  const saveImage = async (uri: string) => {
+    console.log(`
+      saveImage: ${uri},
+      fortmat: ${uri.split('/')[uri.split('/').length - 1]}
+    `);
+    setUri({ uri: uri, uriFormated: uri.split('/')[uri.split('/').length - 1] })
+    await ensureDirExists();
+    const filename = new Date().getTime() + '.jpg';
+    const dest = imgDir + filename;
+    await FileSystem.copyAsync({ from: uri, to: dest });
+
+
+
+    /*     scalable.setValueImage(dest?.split('/')[dest?.split('/').length - 1]); */
+  };
+
   return (
     <View>
-      <View style={styles.getStartedContainer}>
-        <Text
-          style={styles.getStartedText}
-          lightColor="rgba(0,0,0,0.8)"
-          darkColor="rgba(255,255,255,0.8)">
-          Open up the code for this screen:
-        </Text>
+      <View style={{ alignItems: 'center' }}>
+        <View style={containerPickIcons}>
+          <View
+          >
+            <Text>URI: {uri.uri}</Text>
+            <Text>URIFORMATED: {uri.uriFormated}</Text>
+          </View>
 
-        <View
-          style={[styles.codeHighlightContainer, styles.homeScreenFilename]}
-          darkColor="rgba(255,255,255,0.05)"
-          lightColor="rgba(0,0,0,0.05)">
-          <MonoText>{path}</MonoText>
+          <View style={{ marginTop: 4 }}>
+            <Pressable
+              style={buttonPickerImage}
+              onPress={() => {
+                console.log('press');
+                selectImage()
+              }}>
+              <View style={containerPickPhoto}>
+                <AntDesign name="camera" size={24} color="black" />
+                <Text style={{ fontSize: 16 }}>Take a Photo</Text>
+              </View>
+            </Pressable>
+          </View>
+          <View style={{ flex: 1, marginTop: 4 }}>
+            {uri.uri && <Image source={{ uri: uri.uri }} style={{ width: 200, height: 200 }} />}
+          </View>
+
         </View>
-
-        <Text
-          style={styles.getStartedText}
-          lightColor="rgba(0,0,0,0.8)"
-          darkColor="rgba(255,255,255,0.8)">
-          Change any of the text, save the file, and your app will automatically update.
-        </Text>
-      </View>
-
-      <View style={styles.helpContainer}>
-        <ExternalLink
-          style={styles.helpLink}
-          href="https://docs.expo.io/get-started/create-a-new-app/#opening-the-app-on-your-phonetablet">
-          <Text style={styles.helpLinkText} lightColor={Colors.light.tint}>
-            Tap here if your app doesn't automatically update after making changes
-          </Text>
-        </ExternalLink>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  getStartedContainer: {
-    alignItems: 'center',
-    marginHorizontal: 50,
-  },
-  homeScreenFilename: {
-    marginVertical: 7,
-  },
-  codeHighlightContainer: {
-    borderRadius: 3,
-    paddingHorizontal: 4,
-  },
-  getStartedText: {
-    fontSize: 17,
-    lineHeight: 24,
-    textAlign: 'center',
-  },
-  helpContainer: {
-    marginTop: 15,
-    marginHorizontal: 20,
-    alignItems: 'center',
-  },
-  helpLink: {
-    paddingVertical: 15,
-  },
-  helpLinkText: {
-    textAlign: 'center',
-  },
-});
